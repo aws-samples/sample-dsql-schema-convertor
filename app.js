@@ -12,8 +12,94 @@ document.addEventListener('DOMContentLoaded', () => {
     const changesList = document.getElementById('changes-list');
     const modeAi = document.getElementById('mode-ai');
     const modeRules = document.getElementById('mode-rules');
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const filePickerBtn = document.getElementById('file-picker-btn');
+    const fileListEl = document.getElementById('file-list');
 
     const converter = new DSQLConverter();
+    const uploadedFiles = new Map(); // filename -> content
+
+    // --- File Upload ---
+
+    filePickerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.click();
+    });
+
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+        handleFiles(fileInput.files);
+        fileInput.value = '';
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    function handleFiles(files) {
+        const allowed = ['.sql', '.ddl', '.txt', '.pgsql'];
+        Array.from(files).forEach(file => {
+            const ext = '.' + file.name.split('.').pop().toLowerCase();
+            if (!allowed.includes(ext)) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                uploadedFiles.set(file.name, reader.result);
+                renderFileList();
+                populateTextareaFromFiles();
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    function renderFileList() {
+        if (uploadedFiles.size === 0) {
+            fileListEl.hidden = true;
+            return;
+        }
+        fileListEl.hidden = false;
+        fileListEl.innerHTML = '';
+        uploadedFiles.forEach((_, name) => {
+            const chip = document.createElement('span');
+            chip.className = 'file-chip';
+            chip.innerHTML = `${escapeHtml(name)}<button class="file-chip-remove" data-file="${escapeHtml(name)}">&times;</button>`;
+            fileListEl.appendChild(chip);
+        });
+        fileListEl.querySelectorAll('.file-chip-remove').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                uploadedFiles.delete(btn.dataset.file);
+                renderFileList();
+                populateTextareaFromFiles();
+            });
+        });
+    }
+
+    function populateTextareaFromFiles() {
+        if (uploadedFiles.size === 0) {
+            inputSchema.value = '';
+            return;
+        }
+        const parts = [];
+        uploadedFiles.forEach((content, name) => {
+            parts.push(`-- ========== File: ${name} ==========\n${content}`);
+        });
+        inputSchema.value = parts.join('\n\n');
+    }
 
     // API endpoint — update this after deploying the CDK stack
     const API_ENDPOINT = window.DSQL_API_ENDPOINT || '';
@@ -199,6 +285,8 @@ $$ LANGUAGE plpgsql;`;
 
     clearInputBtn.addEventListener('click', () => {
         inputSchema.value = '';
+        uploadedFiles.clear();
+        renderFileList();
         outputSchema.innerHTML = '<span class="placeholder-text">Converted schema will appear here...</span>';
         copyOutputBtn.disabled = true;
         downloadOutputBtn.disabled = true;
