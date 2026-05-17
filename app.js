@@ -104,6 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // API endpoint — update this after deploying the CDK stack
     const API_ENDPOINT = window.DSQL_API_ENDPOINT || '';
 
+    // Hide AI mode if backend is not configured
+    if (!API_ENDPOINT) {
+        modeRules.checked = true;
+        modeAi.closest('.toggle-label').style.display = 'none';
+    }
+
     const sampleSchema = `-- Sample PostgreSQL schema for an e-commerce application
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
