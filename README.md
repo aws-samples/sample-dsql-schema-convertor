@@ -23,17 +23,17 @@ A web tool that converts PostgreSQL DDL schemas to Aurora DSQL-compatible format
 
 ## Deployment
 
-### GitHub Pages
-
-Push to `main` — GitHub Actions deploys automatically via `.github/workflows/deploy.yml`.
+Push to `main` — GitHub Actions builds and deploys automatically.
 
 ## Local Development
 
 ```bash
-python3 -m http.server 8080
+npm install
+npm start
 ```
 
 ## Tech Stack
 
-- **Frontend:** Vanilla HTML/CSS/JS (no framework, deploys to GitHub Pages)
-- **Conversion:** Deterministic regex-based rules in the browser (`converter.js`)
+- **Frontend:** React + [AWS Cloudscape Design System](https://cloudscape.design/)
+- **Conversion:** Deterministic regex-based rules in the browser (`src/converter.js`)
+- **Hosting:** GitHub Pages (built via GitHub Actions)
