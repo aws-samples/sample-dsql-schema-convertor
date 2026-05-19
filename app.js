@@ -173,7 +173,14 @@ CREATE TRIGGER set_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_modified_column();
 
--- Stored procedure for order placement
+-- SQL function (supported in DSQL)
+CREATE OR REPLACE FUNCTION get_order_total(order_id INT)
+RETURNS DECIMAL AS $$
+    SELECT COALESCE(SUM(quantity * unit_price), 0)
+    FROM order_items WHERE order_items.order_id = get_order_total.order_id;
+$$ LANGUAGE SQL;
+
+-- PL/pgSQL procedure (not supported in DSQL)
 CREATE OR REPLACE FUNCTION place_order(
     p_customer_id INT,
     p_items JSONB

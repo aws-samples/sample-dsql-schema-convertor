@@ -7,18 +7,18 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <header>
-        <div class="header-content">
-            <div class="logo">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <path d="M12 22V12M2 7l10 5 10-5" stroke="currentColor" stroke-width="2"/>
-                </svg>
-                <h1>Aurora DSQL Schema Converter</h1>
+        <nav class="top-nav">
+            <div class="nav-left">
+                <span class="aws-service-name">Aurora DSQL</span>
             </div>
+        </nav>
+        <div class="header-content">
+            <div class="breadcrumb">Schema Converter</div>
+            <h1>Aurora DSQL Schema Converter</h1>
             <p class="subtitle">Convert PostgreSQL schemas to Aurora DSQL-compatible format — powered by Strands Agent + Claude on Bedrock</p>
         </div>
     </header>
@@ -28,8 +28,8 @@
             <div class="info-icon">&#9432;</div>
             <div class="info-text">
                 <strong>About Aurora DSQL:</strong> Aurora DSQL is a serverless, distributed SQL database with PostgreSQL compatibility.
-                It has specific constraints including no stored procedures, no triggers, no sequences (use UUIDs), no foreign keys enforced at the database level,
-                and limited DDL transaction support. This tool automatically converts your PostgreSQL schemas to be DSQL-compatible.
+                It supports sequences (with explicit CACHE), identity columns, and SQL functions. However, it does not support PL/pgSQL,
+                triggers, foreign keys, extensions, or temporary tables. This tool automatically converts your PostgreSQL schemas to be DSQL-compatible.
             </div>
         </section>
 
@@ -120,9 +120,9 @@ $$ LANGUAGE plpgsql;"></textarea>
             <h2>Aurora DSQL Key Constraints</h2>
             <div class="constraints-grid">
                 <div class="constraint-card">
-                    <div class="constraint-icon removed">&#10005;</div>
-                    <h3>No Sequences/SERIAL</h3>
-                    <p>Use <code>gen_random_uuid()</code> or application-generated IDs instead of SERIAL/BIGSERIAL.</p>
+                    <div class="constraint-icon changed">&#9888;</div>
+                    <h3>Sequences Require CACHE</h3>
+                    <p>Sequences are supported but require explicit <code>CACHE 1</code> or <code>CACHE &gt;= 65536</code>. SERIAL/BIGSERIAL are converted to identity columns.</p>
                 </div>
                 <div class="constraint-card">
                     <div class="constraint-icon removed">&#10005;</div>
@@ -130,19 +130,14 @@ $$ LANGUAGE plpgsql;"></textarea>
                     <p>Foreign key constraints are not enforced. Referential integrity must be managed at the application level.</p>
                 </div>
                 <div class="constraint-card">
-                    <div class="constraint-icon removed">&#10005;</div>
-                    <h3>No Stored Procedures</h3>
-                    <p>Functions, procedures, and triggers are not supported. Move logic to the application layer.</p>
+                    <div class="constraint-icon changed">&#9888;</div>
+                    <h3>SQL Functions Only</h3>
+                    <p>Only <code>LANGUAGE SQL</code> functions are supported. PL/pgSQL procedures and functions must be moved to the application layer.</p>
                 </div>
                 <div class="constraint-card">
                     <div class="constraint-icon removed">&#10005;</div>
                     <h3>No Triggers</h3>
                     <p>Triggers cannot be created. Use application-level event handling instead.</p>
-                </div>
-                <div class="constraint-card">
-                    <div class="constraint-icon changed">&#9888;</div>
-                    <h3>Limited DDL in Transactions</h3>
-                    <p>DDL statements cannot be mixed with DML in the same transaction.</p>
                 </div>
                 <div class="constraint-card">
                     <div class="constraint-icon removed">&#10005;</div>
