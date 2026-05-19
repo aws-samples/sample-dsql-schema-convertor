@@ -1,5 +1,7 @@
 # Aurora DSQL Schema Converter
 
+> **Live tool:** https://noql.github.io/dsql-schema-convertor/
+
 A web tool that converts PostgreSQL DDL schemas to Aurora DSQL-compatible format, powered by **Strands Agents SDK** with Claude on Amazon Bedrock.
 
 ## Architecture
