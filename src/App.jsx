@@ -9,7 +9,6 @@ import {
     Textarea,
     FormField,
     ColumnLayout,
-    Alert,
     StatusIndicator,
     Tabs,
     SideNavigation,
@@ -162,10 +161,6 @@ function App() {
                         Aurora DSQL Schema Converter
                     </Header>
 
-                    <Alert type="info">
-                        Aurora DSQL supports sequences (with explicit CACHE), identity columns, and SQL functions.
-                        It does not support PL/pgSQL, triggers, foreign keys, or extensions. This tool automatically applies the necessary transformations.
-                    </Alert>
 
                     <Container>
                         <SpaceBetween size="l">
