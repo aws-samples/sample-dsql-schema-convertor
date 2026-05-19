@@ -2,26 +2,7 @@
 
 > **Live tool:** https://noql.github.io/dsql-schema-convertor/
 
-A web tool that converts PostgreSQL DDL schemas to Aurora DSQL-compatible format, powered by **Strands Agents SDK** with Claude on Amazon Bedrock.
-
-## Architecture
-
-```
-┌─────────────────────┐         ┌──────────────────────────────────────┐
-│   GitHub Pages      │  POST   │  AWS Backend                         │
-│   (Static Frontend) │ ──────► │  API Gateway → Lambda                │
-│                     │         │                  │                    │
-│  - index.html       │ ◄────── │                  ▼                    │
-│  - app.js           │  JSON   │         Strands Agent                │
-│  - converter.js     │         │              │                       │
-│    (rule fallback)  │         │              ▼                       │
-│                     │         │     Claude (Bedrock)                  │
-└─────────────────────┘         └──────────────────────────────────────┘
-```
-
-**Two conversion modes:**
-- **AI-Powered (Strands Agent)** — Calls the Lambda backend, which uses a Strands Agent with Claude on Bedrock. Handles complex schemas, provides context-aware migration notes.
-- **Rule-Based (Offline)** — Deterministic regex transformations in the browser. No backend needed, works without deploying infrastructure.
+A web tool that converts PostgreSQL DDL schemas to Aurora DSQL-compatible format using deterministic rule-based transformations — runs entirely in the browser with no backend required.
 
 ## What it converts
 
@@ -42,54 +23,17 @@ A web tool that converts PostgreSQL DDL schemas to Aurora DSQL-compatible format
 
 ## Deployment
 
-### Frontend (GitHub Pages)
+### GitHub Pages
 
 Push to `main` — GitHub Actions deploys automatically via `.github/workflows/deploy.yml`.
-
-### Backend (AWS)
-
-Prerequisites: AWS account with Bedrock Claude access in us-west-2.
-
-```bash
-cd backend/cdk
-npm install
-npx cdk bootstrap
-npx cdk deploy
-```
-
-After deployment, copy the API Gateway URL from the CDK output and paste it into `config.js`:
-
-```javascript
-window.DSQL_API_ENDPOINT = 'https://your-api-id.execute-api.us-west-2.amazonaws.com/prod';
-```
-
-### Required IAM Permissions (Lambda role)
-
-```json
-{
-  "Effect": "Allow",
-  "Action": [
-    "bedrock:InvokeModel",
-    "bedrock:InvokeModelWithResponseStream"
-  ],
-  "Resource": "*"
-}
-```
 
 ## Local Development
 
 ```bash
-# Frontend only (rule-based mode works without backend)
 python3 -m http.server 8080
-
-# Backend (local testing)
-cd backend
-pip install -r requirements.txt
-python -c "from src.agent_handler import handler; print(handler({'schema': 'CREATE TABLE t (id SERIAL PRIMARY KEY);'}, None))"
 ```
 
 ## Tech Stack
 
 - **Frontend:** Vanilla HTML/CSS/JS (no framework, deploys to GitHub Pages)
-- **Backend:** Python, Strands Agents SDK, Amazon Bedrock (Claude)
-- **Infrastructure:** AWS CDK (TypeScript), Lambda (Docker), API Gateway
+- **Conversion:** Deterministic regex-based rules in the browser (`converter.js`)
