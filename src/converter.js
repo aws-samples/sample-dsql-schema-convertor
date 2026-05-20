@@ -1,19 +1,32 @@
 /**
- * Rule-based PostgreSQL to Aurora DSQL schema converter.
+ * Rule-based schema converter for Aurora DSQL.
  *
- * Aurora DSQL supports:
- *  - Sequences (with explicit CACHE 1 or CACHE >= 65536)
- *  - Identity columns (GENERATED ALWAYS/BY DEFAULT AS IDENTITY)
- *  - SQL functions (LANGUAGE SQL only, NOT PL/pgSQL)
+ * Supports input from: PostgreSQL, MySQL, Oracle, SQL Server.
+ * Output is always Aurora DSQL-compatible PostgreSQL DDL.
  *
- * Aurora DSQL does NOT support:
- *  - Foreign keys, triggers, PL/pgSQL, extensions,
- *    table inheritance, partitioning, LISTEN/NOTIFY, rules
+ * Two-phase approach:
+ *  1. Normalize source engine DDL to PG-compatible DDL
+ *  2. Apply DSQL compatibility rules
  */
 
-export function convertSchema(sql) {
+import { normalizeMysql } from './engines/mysql.js';
+import { normalizeOracle } from './engines/oracle.js';
+import { normalizeSqlServer } from './engines/sqlserver.js';
+
+export const SUPPORTED_ENGINES = [
+    { value: 'postgresql', label: 'PostgreSQL' },
+    { value: 'mysql', label: 'MySQL' },
+    { value: 'oracle', label: 'Oracle' },
+    { value: 'sqlserver', label: 'SQL Server' },
+];
+
+export function convertSchema(sql, engine = 'postgresql') {
     const changes = [];
     let result = sql;
+
+    if (engine !== 'postgresql') {
+        result = normalizeToPostgres(result, engine, changes);
+    }
 
     result = removeCreateExtension(result, changes);
     result = removePlpgsqlFunctions(result, changes);
@@ -34,6 +47,19 @@ export function convertSchema(sql) {
     result = cleanupEmptyLines(result);
 
     return { sql: result.trim(), changes };
+}
+
+function normalizeToPostgres(sql, engine, changes) {
+    switch (engine) {
+        case 'mysql':
+            return normalizeMysql(sql, changes);
+        case 'oracle':
+            return normalizeOracle(sql, changes);
+        case 'sqlserver':
+            return normalizeSqlServer(sql, changes);
+        default:
+            return sql;
+    }
 }
 
 function removeCreateExtension(sql, changes) {
@@ -139,7 +165,7 @@ function removeForeignKeys(sql, changes) {
         sql = sql.replace(alterFkRegex, '');
     }
 
-    const inlineFkConstraint = /,?\s*CONSTRAINT\s+[\w"]+\s+FOREIGN\s+KEY\s*\([^)]*\)\s*REFERENCES\s+[^,)]+(?:\s+ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET\s+NULL|SET\s+DEFAULT|RESTRICT|NO\s+ACTION))*\s*/gi;
+    const inlineFkConstraint = /,?[ \t]*\n?[ \t]*CONSTRAINT\s+[\w"]+\s+FOREIGN\s+KEY\s*\([^)]*\)\s*REFERENCES\s+[\w."]+\s*(?:\([^)]*\))?(?:\s+ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET\s+NULL|SET\s+DEFAULT|RESTRICT|NO\s+ACTION))*/gi;
     const inlineMatches = sql.match(inlineFkConstraint);
     if (inlineMatches) {
         inlineMatches.forEach(() => {
@@ -148,7 +174,7 @@ function removeForeignKeys(sql, changes) {
         sql = sql.replace(inlineFkConstraint, '');
     }
 
-    const fkLine = /,?\s*FOREIGN\s+KEY\s*\([^)]*\)\s*REFERENCES\s+[^,)]+(?:\s+ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET\s+NULL|SET\s+DEFAULT|RESTRICT|NO\s+ACTION))*\s*/gi;
+    const fkLine = /,?[ \t]*\n?[ \t]*FOREIGN\s+KEY\s*\([^)]*\)\s*REFERENCES\s+[\w."]+\s*(?:\([^)]*\))?(?:\s+ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET\s+NULL|SET\s+DEFAULT|RESTRICT|NO\s+ACTION))*/gi;
     const fkMatches = sql.match(fkLine);
     if (fkMatches) {
         fkMatches.forEach(() => {
@@ -156,6 +182,8 @@ function removeForeignKeys(sql, changes) {
         });
         sql = sql.replace(fkLine, '');
     }
+
+    sql = sql.replace(/,(\s*\))/g, '$1');
 
     return sql;
 }

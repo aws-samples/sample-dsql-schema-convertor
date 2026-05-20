@@ -15,28 +15,32 @@ import {
     Table,
     Badge,
     Link,
-    HelpPanel
+    HelpPanel,
+    Select
 } from '@cloudscape-design/components';
-import { convertSchema } from './converter';
-import { SAMPLE_SCHEMA } from './sampleSchema';
+import { convertSchema, SUPPORTED_ENGINES } from './converter';
+import { SAMPLE_SCHEMAS } from './sampleSchema';
+
+const ENGINE_OPTIONS = SUPPORTED_ENGINES.map(e => ({ value: e.value, label: e.label }));
 
 function App() {
     const [inputSchema, setInputSchema] = useState('');
     const [outputSchema, setOutputSchema] = useState('');
     const [changes, setChanges] = useState([]);
     const [hasOutput, setHasOutput] = useState(false);
+    const [selectedEngine, setSelectedEngine] = useState(ENGINE_OPTIONS[0]);
 
     const handleConvert = useCallback(() => {
         const input = inputSchema.trim();
         if (!input) return;
-        const result = convertSchema(input);
+        const result = convertSchema(input, selectedEngine.value);
         setOutputSchema(result.sql);
         setChanges(result.changes);
         setHasOutput(true);
-    }, [inputSchema]);
+    }, [inputSchema, selectedEngine]);
 
     const handleLoadSample = () => {
-        setInputSchema(SAMPLE_SCHEMA);
+        setInputSchema(SAMPLE_SCHEMAS[selectedEngine.value]);
     };
 
     const handleClear = () => {
@@ -65,7 +69,7 @@ function App() {
     const handleFileUpload = (e) => {
         const files = e.target.files;
         if (!files.length) return;
-        const allowed = ['.sql', '.ddl', '.txt', '.pgsql'];
+        const allowed = ['.sql', '.ddl', '.txt', '.pgsql', '.mysql', '.ora', '.tsql'];
         const readers = [];
 
         Array.from(files).forEach(file => {
@@ -95,6 +99,17 @@ function App() {
                 text: 'Aurora DSQL Schema Converter'
             }}
             items={[
+                {
+                    type: 'section',
+                    text: 'Supported Sources',
+                    items: [
+                        { type: 'link', text: 'PostgreSQL', href: '#' },
+                        { type: 'link', text: 'MySQL', href: '#' },
+                        { type: 'link', text: 'Oracle', href: '#' },
+                        { type: 'link', text: 'SQL Server', href: '#' }
+                    ]
+                },
+                { type: 'divider' },
                 {
                     type: 'section',
                     text: 'DSQL Constraints',
@@ -156,7 +171,7 @@ function App() {
                 <SpaceBetween size="l">
                     <Header
                         variant="h1"
-                        description="Convert PostgreSQL schemas to Aurora DSQL-compatible format"
+                        description="Convert database schemas from PostgreSQL, MySQL, Oracle, or SQL Server to Aurora DSQL-compatible format"
                     >
                         Aurora DSQL Schema Converter
                     </Header>
@@ -165,8 +180,19 @@ function App() {
                     <Container>
                         <SpaceBetween size="l">
                             <FormField
-                                label="PostgreSQL Schema (Input)"
-                                description="Paste your PostgreSQL DDL or upload .sql files"
+                                label="Source Database Engine"
+                                description="Select the database engine your schema is from"
+                            >
+                                <Select
+                                    selectedOption={selectedEngine}
+                                    onChange={({ detail }) => setSelectedEngine(detail.selectedOption)}
+                                    options={ENGINE_OPTIONS}
+                                />
+                            </FormField>
+
+                            <FormField
+                                label={`${selectedEngine.label} Schema (Input)`}
+                                description={`Paste your ${selectedEngine.label} DDL or upload schema files`}
                                 secondaryControl={
                                     <SpaceBetween direction="horizontal" size="xs">
                                         <Button onClick={handleLoadSample}>Load Sample</Button>
@@ -177,7 +203,7 @@ function App() {
                                                 <input
                                                     type="file"
                                                     multiple
-                                                    accept=".sql,.ddl,.txt,.pgsql"
+                                                    accept=".sql,.ddl,.txt,.pgsql,.mysql,.ora,.tsql"
                                                     onChange={handleFileUpload}
                                                     style={{ display: 'none' }}
                                                 />
@@ -189,7 +215,7 @@ function App() {
                                 <Textarea
                                     value={inputSchema}
                                     onChange={({ detail }) => setInputSchema(detail.value)}
-                                    placeholder="Paste your PostgreSQL DDL here..."
+                                    placeholder={`Paste your ${selectedEngine.label} DDL here...`}
                                     rows={16}
                                 />
                             </FormField>
