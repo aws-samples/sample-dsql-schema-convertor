@@ -1,6 +1,6 @@
 # Aurora DSQL Schema Converter
 
-> **Live tool:** https://noql.github.io/dsql-schema-convertor/
+> **Live tool:** https://aws-samples.github.io/sample-dsql-schema-convertor/
 
 A web tool that converts PostgreSQL DDL schemas to Aurora DSQL-compatible format using deterministic rule-based transformations — runs entirely in the browser with no backend required.
 

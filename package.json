@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "homepage": "https://noql.github.io/dsql-schema-convertor",
+  "homepage": "https://aws-samples.github.io/sample-dsql-schema-convertor",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
