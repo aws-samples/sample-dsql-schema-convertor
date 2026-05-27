@@ -66,6 +66,12 @@ function App() {
         URL.revokeObjectURL(url);
     };
 
+    const handleTryInPlayground = () => {
+        navigator.clipboard.writeText(outputSchema).then(() => {
+            window.open('https://playground.dsql.demo.aws/workspaces/public/edit', '_blank');
+        });
+    };
+
     const handleDownloadSummary = () => {
         const removed = changes.filter(c => c.type === 'removed');
         const modified = changes.filter(c => c.type === 'modified');
@@ -341,6 +347,7 @@ function App() {
                                         <SpaceBetween direction="horizontal" size="xs">
                                             <Button onClick={handleCopy} iconName="copy">Copy</Button>
                                             <Button onClick={handleDownload} iconName="download">Download</Button>
+                                            <Button onClick={handleTryInPlayground} iconName="external" iconAlign="right">Try in DSQL Playground</Button>
                                         </SpaceBetween>
                                     }
                                 >
