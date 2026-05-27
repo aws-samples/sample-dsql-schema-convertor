@@ -347,7 +347,7 @@ function App() {
                                         <SpaceBetween direction="horizontal" size="xs">
                                             <Button onClick={handleCopy} iconName="copy">Copy</Button>
                                             <Button onClick={handleDownload} iconName="download">Download</Button>
-                                            <Button onClick={handleTryInPlayground} iconName="external" iconAlign="right">Try in DSQL Playground</Button>
+                                            <span className="playground-btn"><Button onClick={handleTryInPlayground} iconName="external" iconAlign="right">Try in DSQL Playground</Button></span>
                                         </SpaceBetween>
                                     }
                                 >

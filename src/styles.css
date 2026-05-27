@@ -1,0 +1,10 @@
+.playground-btn button {
+    background-color: #ec7211 !important;
+    border-color: #ec7211 !important;
+    color: #fff !important;
+}
+
+.playground-btn button:hover {
+    background-color: #d45e0a !important;
+    border-color: #d45e0a !important;
+}
