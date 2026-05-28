@@ -8,13 +8,9 @@ import {
     Button,
     Textarea,
     FormField,
-    ColumnLayout,
-    StatusIndicator,
-    Tabs,
     SideNavigation,
     Table,
     Badge,
-    Link,
     HelpPanel,
     Select
 } from '@cloudscape-design/components';
@@ -402,58 +398,6 @@ function App() {
                         </Container>
                     )}
 
-                    <Container header={<Header variant="h2">Migration Considerations</Header>}>
-                        <ColumnLayout columns={3} variant="text-grid">
-                            <div>
-                                <Box variant="awsui-key-label">
-                                    <StatusIndicator type="warning">Sequences require CACHE</StatusIndicator>
-                                </Box>
-                                <Box variant="p">
-                                    Sequences are supported but require explicit <code>CACHE 1</code> or <code>CACHE &gt;= 65536</code>. SERIAL types are converted to identity columns.
-                                </Box>
-                            </div>
-                            <div>
-                                <Box variant="awsui-key-label">
-                                    <StatusIndicator type="error">No Foreign Keys</StatusIndicator>
-                                </Box>
-                                <Box variant="p">
-                                    Foreign key constraints are not supported. Manage referential integrity in your application.
-                                </Box>
-                            </div>
-                            <div>
-                                <Box variant="awsui-key-label">
-                                    <StatusIndicator type="warning">SQL Functions Only</StatusIndicator>
-                                </Box>
-                                <Box variant="p">
-                                    Only <code>LANGUAGE SQL</code> functions are supported. PL/pgSQL must be moved to the application layer.
-                                </Box>
-                            </div>
-                            <div>
-                                <Box variant="awsui-key-label">
-                                    <StatusIndicator type="error">No Triggers</StatusIndicator>
-                                </Box>
-                                <Box variant="p">
-                                    Triggers cannot be created. Use application-level event handling instead.
-                                </Box>
-                            </div>
-                            <div>
-                                <Box variant="awsui-key-label">
-                                    <StatusIndicator type="error">No Extensions</StatusIndicator>
-                                </Box>
-                                <Box variant="p">
-                                    PostgreSQL extensions (e.g., PostGIS, pg_trgm) are not available.
-                                </Box>
-                            </div>
-                            <div>
-                                <Box variant="awsui-key-label">
-                                    <StatusIndicator type="info">Async Indexes</StatusIndicator>
-                                </Box>
-                                <Box variant="p">
-                                    Use <code>CREATE INDEX ASYNC</code> for non-blocking index creation.
-                                </Box>
-                            </div>
-                        </ColumnLayout>
-                    </Container>
                 </SpaceBetween>
             }
         />
