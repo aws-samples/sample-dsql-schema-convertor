@@ -222,13 +222,13 @@ function App() {
                 { type: 'divider' },
                 {
                     type: 'section',
-                    text: 'DSQL Constraints',
+                    text: 'Migration Considerations',
                     items: [
-                        { type: 'link', text: 'No Foreign Keys', href: '#' },
-                        { type: 'link', text: 'No Triggers', href: '#' },
-                        { type: 'link', text: 'No PL/pgSQL', href: '#' },
-                        { type: 'link', text: 'No Extensions', href: '#' },
-                        { type: 'link', text: 'Sequences require CACHE', href: '#' }
+                        { type: 'link', text: 'Referential Integrity', href: 'https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html#dsql-schema-design-patterns', external: true },
+                        { type: 'link', text: 'Application-level Logic', href: 'https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html#dsql-modern-application-patterns', external: true },
+                        { type: 'link', text: 'SQL Functions', href: 'https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html#dsql-modern-application-patterns', external: true },
+                        { type: 'link', text: 'DDL Alternatives', href: 'https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html#dsql-ddl-alternatives', external: true },
+                        { type: 'link', text: 'Sequences & Identity', href: 'https://docs.aws.amazon.com/aurora-dsql/latest/userguide/sequences-identity-columns.html', external: true }
                     ]
                 },
                 { type: 'divider' },
@@ -237,7 +237,7 @@ function App() {
                     text: 'Resources',
                     items: [
                         { type: 'link', text: 'Aurora DSQL Docs', href: 'https://docs.aws.amazon.com/aurora-dsql/', external: true },
-                        { type: 'link', text: 'GitHub Repository', href: 'https://github.com/noql/dsql-schema-convertor', external: true }
+                        { type: 'link', text: 'GitHub Repository', href: 'https://github.com/aws-samples/sample-dsql-schema-convertor', external: true }
                     ]
                 }
             ]}
@@ -402,7 +402,7 @@ function App() {
                         </Container>
                     )}
 
-                    <Container header={<Header variant="h2">Aurora DSQL Key Constraints</Header>}>
+                    <Container header={<Header variant="h2">Migration Considerations</Header>}>
                         <ColumnLayout columns={3} variant="text-grid">
                             <div>
                                 <Box variant="awsui-key-label">
