@@ -43,6 +43,7 @@ export function convertSchema(sql, engine = 'postgresql') {
     result = removeEventTriggers(result, changes);
     result = removeListenNotify(result, changes);
     result = convertIdentityColumns(result, changes);
+    result = convertIndexToAsync(result, changes);
     result = addDsqlComments(result, changes);
     result = cleanupEmptyLines(result);
 
@@ -355,6 +356,21 @@ function convertIdentityColumns(sql, changes) {
         replacements.forEach(r => { sql = sql.replace(r.old, r.new); });
     }
 
+    return sql;
+}
+
+function convertIndexToAsync(sql, changes) {
+    const indexRegex = /CREATE\s+(UNIQUE\s+)?INDEX\s+(?!ASYNC\b)/gi;
+    const matches = sql.match(indexRegex);
+    if (matches) {
+        changes.push({
+            type: 'modified',
+            message: `Converted ${matches.length} CREATE INDEX to CREATE INDEX ASYNC — DSQL requires async index creation`
+        });
+        sql = sql.replace(/CREATE\s+(UNIQUE\s+)?INDEX\s+(?!ASYNC\b)/gi, (match, unique) => {
+            return unique ? `CREATE UNIQUE INDEX ASYNC ` : `CREATE INDEX ASYNC `;
+        });
+    }
     return sql;
 }
 
