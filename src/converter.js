@@ -29,6 +29,8 @@ export function convertSchema(sql, engine = 'postgresql') {
     }
 
     result = removeCreateExtension(result, changes);
+    result = removeDropExtension(result, changes);
+    result = removeProcedures(result, changes);
     result = removePlpgsqlFunctions(result, changes);
     result = removeTriggers(result, changes);
     result = convertSerialTypes(result, changes);
@@ -39,9 +41,22 @@ export function convertSchema(sql, engine = 'postgresql') {
     result = removeInheritance(result, changes);
     result = removePartitioning(result, changes);
     result = removeTablespaces(result, changes);
+    result = removeCreateTablespace(result, changes);
     result = removeRules(result, changes);
     result = removeEventTriggers(result, changes);
     result = removeListenNotify(result, changes);
+    result = removeTemporaryTables(result, changes);
+    result = convertTruncate(result, changes);
+    result = removeMaterializedViews(result, changes);
+    result = removeDeferrableConstraints(result, changes);
+    result = removeGeneratedStoredColumns(result, changes);
+    result = removeExclusionConstraints(result, changes);
+    result = removeCreateType(result, changes);
+    result = removeCreateAggregate(result, changes);
+    result = removeCreateOperator(result, changes);
+    result = removeAlterIndex(result, changes);
+    result = removeVacuum(result, changes);
+    result = removeCursors(result, changes);
     result = convertIdentityColumns(result, changes);
     result = convertIndexToAsync(result, changes);
     result = addDsqlComments(result, changes);
@@ -64,11 +79,11 @@ function normalizeToPostgres(sql, engine, changes) {
 }
 
 function removeCreateExtension(sql, changes) {
-    const regex = /CREATE\s+EXTENSION\s+(IF\s+NOT\s+EXISTS\s+)?[\w"]+[^;]*;/gi;
+    const regex = /CREATE\s+EXTENSION\s+(IF\s+NOT\s+EXISTS\s+)?[\w".-]+[^;]*;/gi;
     const matches = sql.match(regex);
     if (matches) {
         matches.forEach(m => {
-            const extName = m.match(/EXTENSION\s+(?:IF\s+NOT\s+EXISTS\s+)?["']?(\w+)["']?/i);
+            const extName = m.match(/EXTENSION\s+(?:IF\s+NOT\s+EXISTS\s+)?["']?([\w.-]+)["']?/i);
             changes.push({
                 type: 'removed',
                 message: `Removed CREATE EXTENSION${extName ? ' ' + extName[1] : ''} — extensions are not supported in DSQL`
@@ -79,25 +94,45 @@ function removeCreateExtension(sql, changes) {
     return sql;
 }
 
+function removeDropExtension(sql, changes) {
+    const regex = /DROP\s+EXTENSION\s+(IF\s+EXISTS\s+)?[\w".-]+[^;]*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: `Removed ${matches.length} DROP EXTENSION statement(s)` });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function removeProcedures(sql, changes) {
+    const procRegex = /CREATE\s+(?:OR\s+REPLACE\s+)?PROCEDURE\s+([\w."]+)\s*\([^)]*\)[^]*?(?:\$\$[^]*?\$\$|\$[\w]*\$[^]*?\$[\w]*\$)[^;]*;/gi;
+    const matches = sql.match(procRegex);
+    if (matches) {
+        matches.forEach(m => {
+            const name = m.match(/PROCEDURE\s+([\w."]+)/i);
+            changes.push({
+                type: 'removed',
+                message: `Removed procedure "${name ? name[1] : 'unknown'}" — DSQL only supports CREATE FUNCTION (LANGUAGE SQL)`
+            });
+            sql = sql.replace(m, '');
+        });
+    }
+    return sql;
+}
+
 function removePlpgsqlFunctions(sql, changes) {
-    const funcRegex = /CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\s+([\w."]+)\s*\([^)]*\)[^]*?(?:\$\$[^]*?\$\$|\$[\w]*\$[^]*?\$[\w]*\$)[^;]*;/gi;
+    const funcRegex = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+([\w."]+)\s*\([^)]*\)[^]*?(?:\$\$[^]*?\$\$|\$[\w]*\$[^]*?\$[\w]*\$)[^;]*;/gi;
     const matches = sql.match(funcRegex);
     if (matches) {
         matches.forEach(m => {
-            if (/LANGUAGE\s+plpgsql/i.test(m)) {
-                const name = m.match(/(?:FUNCTION|PROCEDURE)\s+([\w."]+)/i);
-                changes.push({
-                    type: 'removed',
-                    message: `Removed PL/pgSQL ${m.match(/FUNCTION/i) ? 'function' : 'procedure'} "${name ? name[1] : 'unknown'}" — only LANGUAGE SQL functions are supported in DSQL`
-                });
-                sql = sql.replace(m, '');
-            } else if (/LANGUAGE\s+sql/i.test(m)) {
-                // Keep SQL functions
+            if (/LANGUAGE\s+sql/i.test(m)) {
+                // Keep SQL functions — they are supported
             } else {
-                const name = m.match(/(?:FUNCTION|PROCEDURE)\s+([\w."]+)/i);
+                const name = m.match(/FUNCTION\s+([\w."]+)/i);
+                const lang = m.match(/LANGUAGE\s+(\w+)/i);
                 changes.push({
                     type: 'removed',
-                    message: `Removed ${m.match(/FUNCTION/i) ? 'function' : 'procedure'} "${name ? name[1] : 'unknown'}" — only LANGUAGE SQL functions are supported in DSQL`
+                    message: `Removed function "${name ? name[1] : 'unknown'}" (LANGUAGE ${lang ? lang[1] : 'unknown'}) — only LANGUAGE SQL functions are supported in DSQL`
                 });
                 sql = sql.replace(m, '');
             }
@@ -238,13 +273,6 @@ function convertSequences(sql, changes) {
 
     replacements.forEach(r => { sql = sql.replace(r.old, r.new); });
 
-    const alterSeqRegex = /ALTER\s+SEQUENCE\s+[\w."]+[^;]*;/gi;
-    const alterMatches = sql.match(alterSeqRegex);
-    if (alterMatches) {
-        changes.push({ type: 'info', message: `Removed ${alterMatches.length} ALTER SEQUENCE statement(s)` });
-        sql = sql.replace(alterSeqRegex, '');
-    }
-
     return sql;
 }
 
@@ -299,6 +327,16 @@ function removeTablespaces(sql, changes) {
     return sql;
 }
 
+function removeCreateTablespace(sql, changes) {
+    const regex = /CREATE\s+TABLESPACE\s+[\w"]+[^;]*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: `Removed ${matches.length} CREATE TABLESPACE statement(s)` });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
 function removeRules(sql, changes) {
     const ruleRegex = /CREATE\s+(?:OR\s+REPLACE\s+)?RULE\s+[\w"]+[^;]*;/gi;
     const matches = sql.match(ruleRegex);
@@ -332,6 +370,146 @@ function removeListenNotify(sql, changes) {
     return sql;
 }
 
+function removeTemporaryTables(sql, changes) {
+    const regex = /CREATE\s+(?:GLOBAL\s+|LOCAL\s+)?(?:TEMPORARY|TEMP)\s+TABLE\s+([\w."]+)[^;]*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        matches.forEach(m => {
+            const name = m.match(/TABLE\s+([\w."]+)/i);
+            changes.push({ type: 'removed', message: `Removed temporary table "${name ? name[1] : ''}" — temporary tables not supported in DSQL` });
+        });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function convertTruncate(sql, changes) {
+    const regex = /TRUNCATE\s+(?:TABLE\s+)?([\w."]+)\s*(?:CASCADE|RESTRICT|CONTINUE\s+IDENTITY|RESTART\s+IDENTITY)?\s*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'modified', message: `Converted ${matches.length} TRUNCATE to DELETE FROM — TRUNCATE not supported in DSQL` });
+        sql = sql.replace(regex, (match, tableName) => `DELETE FROM ${tableName};`);
+    }
+    return sql;
+}
+
+function removeMaterializedViews(sql, changes) {
+    const createRegex = /CREATE\s+MATERIALIZED\s+VIEW\s+([\w."]+)[^;]*;/gi;
+    const matches = sql.match(createRegex);
+    if (matches) {
+        matches.forEach(m => {
+            const name = m.match(/VIEW\s+([\w."]+)/i);
+            changes.push({ type: 'removed', message: `Removed materialized view "${name ? name[1] : ''}" — not supported in DSQL` });
+        });
+        sql = sql.replace(createRegex, '');
+    }
+
+    const refreshRegex = /REFRESH\s+MATERIALIZED\s+VIEW\s+(?:CONCURRENTLY\s+)?[\w."]+[^;]*;/gi;
+    const refreshMatches = sql.match(refreshRegex);
+    if (refreshMatches) {
+        changes.push({ type: 'removed', message: `Removed ${refreshMatches.length} REFRESH MATERIALIZED VIEW statement(s)` });
+        sql = sql.replace(refreshRegex, '');
+    }
+
+    const dropRegex = /DROP\s+MATERIALIZED\s+VIEW\s+(?:IF\s+EXISTS\s+)?[\w."]+[^;]*;/gi;
+    sql = sql.replace(dropRegex, '');
+
+    return sql;
+}
+
+function removeDeferrableConstraints(sql, changes) {
+    const regex = /\s+DEFERRABLE(?:\s+INITIALLY\s+(?:DEFERRED|IMMEDIATE))?/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: 'Removed DEFERRABLE constraint clauses — not supported in DSQL' });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function removeGeneratedStoredColumns(sql, changes) {
+    const regex = /\s+GENERATED\s+ALWAYS\s+AS\s*\([^)]+\)\s+STORED/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: `Removed ${matches.length} generated stored column expression(s) — not supported in DSQL (use views or application logic)` });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function removeExclusionConstraints(sql, changes) {
+    const regex = /,?[ \t]*\n?[ \t]*(?:CONSTRAINT\s+[\w"]+\s+)?EXCLUDE\s+(?:USING\s+\w+\s*)?\([^)]+\)(?:\s+WHERE\s*\([^)]+\))?/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: `Removed ${matches.length} exclusion constraint(s) — not supported in DSQL` });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function removeCreateType(sql, changes) {
+    const regex = /CREATE\s+TYPE\s+([\w."]+)\s+AS\s*\([^)]*\)\s*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        matches.forEach(m => {
+            const name = m.match(/TYPE\s+([\w."]+)/i);
+            changes.push({ type: 'removed', message: `Removed CREATE TYPE "${name ? name[1] : ''}" — use CREATE DOMAIN or restructure into columns` });
+        });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function removeCreateAggregate(sql, changes) {
+    const regex = /CREATE\s+(?:OR\s+REPLACE\s+)?AGGREGATE\s+[\w."]+\s*\([^)]*\)\s*\([^)]*\)\s*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: `Removed ${matches.length} CREATE AGGREGATE statement(s) — not supported in DSQL` });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function removeCreateOperator(sql, changes) {
+    const regex = /CREATE\s+OPERATOR\s+[^\s(]+\s*\([^)]*\)\s*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: `Removed ${matches.length} CREATE OPERATOR statement(s) — not supported in DSQL` });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function removeAlterIndex(sql, changes) {
+    const regex = /ALTER\s+INDEX\s+[\w."]+[^;]*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: `Removed ${matches.length} ALTER INDEX statement(s) — use DROP and CREATE INDEX ASYNC instead` });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function removeVacuum(sql, changes) {
+    const regex = /\b(?:VACUUM|ANALYZE)\s*(?:FULL\s+|VERBOSE\s+|FREEZE\s+)*(?:[\w."]+)?\s*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: `Removed ${matches.length} VACUUM/ANALYZE statement(s) — managed automatically by DSQL` });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
+function removeCursors(sql, changes) {
+    const regex = /DECLARE\s+[\w"]+\s+CURSOR\s+[^;]*;/gi;
+    const matches = sql.match(regex);
+    if (matches) {
+        changes.push({ type: 'removed', message: `Removed ${matches.length} DECLARE CURSOR statement(s) — not supported in DSQL` });
+        sql = sql.replace(regex, '');
+    }
+    return sql;
+}
+
 function convertIdentityColumns(sql, changes) {
     const identityRegex = /GENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY(?:\s*\(([^)]*)\))?/gi;
     let match;
@@ -348,11 +526,27 @@ function convertIdentityColumns(sql, changes) {
                 `AS IDENTITY (${newOptions})`
             );
             replacements.push({ old: fullMatch, new: newExpr });
+        } else {
+            const cacheMatch = options.match(/CACHE\s+(\d+)/i);
+            if (cacheMatch) {
+                const cacheVal = parseInt(cacheMatch[1], 10);
+                if (cacheVal !== 1 && cacheVal < 65536) {
+                    const newExpr = fullMatch.replace(/CACHE\s+\d+/i, 'CACHE 65536');
+                    replacements.push({ old: fullMatch, new: newExpr });
+                    changes.push({
+                        type: 'modified',
+                        message: `Changed identity CACHE ${cacheVal} to CACHE 65536 — DSQL only supports CACHE 1 or >= 65536`
+                    });
+                }
+            }
         }
     }
 
     if (replacements.length > 0) {
-        changes.push({ type: 'modified', message: `Added CACHE to ${replacements.length} identity column(s)` });
+        const added = replacements.filter(r => !r.old.match(/CACHE\s+\d+/i));
+        if (added.length > 0) {
+            changes.push({ type: 'modified', message: `Added CACHE to ${added.length} identity column(s)` });
+        }
         replacements.forEach(r => { sql = sql.replace(r.old, r.new); });
     }
 
@@ -360,17 +554,21 @@ function convertIdentityColumns(sql, changes) {
 }
 
 function convertIndexToAsync(sql, changes) {
-    const indexRegex = /CREATE\s+(UNIQUE\s+)?INDEX\s+(?!ASYNC\b)/gi;
+    const indexRegex = /^([^-\n]*?)CREATE\s+(UNIQUE\s+)?INDEX\s+(?!ASYNC\b)/gim;
     const matches = sql.match(indexRegex);
     if (matches) {
-        changes.push({
-            type: 'modified',
-            message: `Converted ${matches.length} CREATE INDEX to CREATE INDEX ASYNC — DSQL requires async index creation`
-        });
-        sql = sql.replace(/CREATE\s+(UNIQUE\s+)?INDEX\s+(?!ASYNC\b)/gi, (match, unique) => {
-            return unique ? `CREATE UNIQUE INDEX ASYNC ` : `CREATE INDEX ASYNC `;
-        });
+        const realMatches = matches.filter(m => !m.trimStart().startsWith('--'));
+        if (realMatches.length > 0) {
+            changes.push({
+                type: 'modified',
+                message: `Converted ${realMatches.length} CREATE INDEX to CREATE INDEX ASYNC — DSQL requires async index creation`
+            });
+        }
     }
+    sql = sql.replace(/^(\s*)CREATE\s+(UNIQUE\s+)?INDEX\s+(?!ASYNC\b)/gim, (match, indent, unique) => {
+        if (match.trimStart().startsWith('--')) return match;
+        return unique ? `${indent}CREATE UNIQUE INDEX ASYNC ` : `${indent}CREATE INDEX ASYNC `;
+    });
     return sql;
 }
 
