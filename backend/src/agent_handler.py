@@ -1,12 +1,15 @@
 """
-Aurora DSQL Schema Converter — Strands Agent Lambda Handler.
-Uses Claude via Amazon Bedrock to convert PostgreSQL schemas to DSQL-compatible format.
+Aurora DSQL Schema Converter — Lambda Handler.
+Routes between:
+  - /convert: Strands Agent + Bedrock Claude for AI-powered conversion
+  - /lint: dsql-lint binary for offline validation and auto-fix
 """
 
 import json
 from typing import Any, Dict
 from strands import Agent
 from strands.models import BedrockModel
+from lint_handler import handle_lint
 
 SYSTEM_PROMPT = """You are an expert database engineer specializing in Aurora DSQL migrations.
 Your task is to convert PostgreSQL DDL schemas into Aurora DSQL-compatible schemas.
@@ -61,7 +64,12 @@ def create_agent() -> Agent:
 
 
 def handler(event: Dict[str, Any], _context) -> Dict[str, Any]:
-    """Lambda handler that receives PostgreSQL DDL and returns DSQL-compatible DDL."""
+    """Lambda handler that routes to convert or lint based on API path."""
+
+    path = event.get("path", "") or event.get("resource", "")
+
+    if "/lint" in path:
+        return handle_lint(event)
 
     # Handle API Gateway proxy integration
     if "body" in event:

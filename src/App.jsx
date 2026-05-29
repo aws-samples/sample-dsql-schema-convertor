@@ -12,11 +12,15 @@ import {
     Table,
     Badge,
     HelpPanel,
-    Select
+    Select,
+    StatusIndicator,
+    Alert,
+    Spinner
 } from '@cloudscape-design/components';
 import { convertSchema, SUPPORTED_ENGINES } from './converter';
 import { SAMPLE_SCHEMAS } from './sampleSchema';
 
+const API_URL = import.meta.env.VITE_API_URL || '';
 const ENGINE_OPTIONS = SUPPORTED_ENGINES.map(e => ({ value: e.value, label: e.label }));
 
 function App() {
@@ -25,6 +29,9 @@ function App() {
     const [changes, setChanges] = useState([]);
     const [hasOutput, setHasOutput] = useState(false);
     const [selectedEngine, setSelectedEngine] = useState(ENGINE_OPTIONS[0]);
+    const [lintResult, setLintResult] = useState(null);
+    const [lintLoading, setLintLoading] = useState(false);
+    const [lintError, setLintError] = useState(null);
 
     const handleConvert = useCallback(() => {
         const input = inputSchema.trim();
@@ -44,6 +51,8 @@ function App() {
         setOutputSchema('');
         setChanges([]);
         setHasOutput(false);
+        setLintResult(null);
+        setLintError(null);
     };
 
     const handleCopy = () => {
@@ -66,6 +75,38 @@ function App() {
         navigator.clipboard.writeText(outputSchema).then(() => {
             window.open('https://playground.dsql.demo.aws/workspaces/public/edit', '_blank');
         });
+    };
+
+    const handleValidate = async () => {
+        if (!API_URL) {
+            setLintError('Validation API not configured. Set VITE_API_URL environment variable.');
+            return;
+        }
+        setLintLoading(true);
+        setLintError(null);
+        setLintResult(null);
+        try {
+            const response = await fetch(`${API_URL}/lint`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sql: outputSchema }),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            setLintResult(data);
+        } catch (err) {
+            setLintError(`Validation failed: ${err.message}`);
+        } finally {
+            setLintLoading(false);
+        }
+    };
+
+    const handleApplyFixes = () => {
+        if (lintResult && lintResult.fixed_sql) {
+            setOutputSchema(lintResult.fixed_sql);
+            setLintResult(null);
+            changes.push({ type: 'modified', message: 'Applied dsql-lint auto-fixes' });
+        }
     };
 
     const handleDownloadSummary = () => {
@@ -336,7 +377,7 @@ function App() {
                                 </Button>
                             </Box>
 
-                            {hasOutput && (
+                            {hasOutput && (<>
                                 <FormField
                                     label="Aurora DSQL Schema (Output)"
                                     secondaryControl={
@@ -344,6 +385,11 @@ function App() {
                                             <Button onClick={handleCopy} iconName="copy">Copy</Button>
                                             <Button onClick={handleDownload} iconName="download">Download</Button>
                                             <span className="playground-btn"><Button onClick={handleTryInPlayground} iconName="external" iconAlign="right">Try in DSQL Playground</Button></span>
+                                            {API_URL && (
+                                                <Button onClick={handleValidate} loading={lintLoading} iconName="status-positive">
+                                                    Validate with DSQL
+                                                </Button>
+                                            )}
                                         </SpaceBetween>
                                     }
                                 >
@@ -353,7 +399,31 @@ function App() {
                                         rows={16}
                                     />
                                 </FormField>
-                            )}
+
+                                {lintError && (
+                                    <Alert type="error" dismissible onDismiss={() => setLintError(null)}>
+                                        {lintError}
+                                    </Alert>
+                                )}
+
+                                {lintResult && (
+                                    <Alert
+                                        type={lintResult.valid ? "success" : "warning"}
+                                        header={lintResult.valid ? "Schema is DSQL-compatible" : `Found ${lintResult.diagnostics.length} issue(s)`}
+                                        action={lintResult.fixed_sql ? (
+                                            <Button onClick={handleApplyFixes}>Apply Fixes</Button>
+                                        ) : null}
+                                    >
+                                        {!lintResult.valid && (
+                                            <ul>
+                                                {lintResult.diagnostics.map((d, i) => (
+                                                    <li key={i}>{d.message || d.rule}{d.line ? ` (line ${d.line})` : ''}</li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </Alert>
+                                )}
+                            </>)}
                         </SpaceBetween>
                     </Container>
 

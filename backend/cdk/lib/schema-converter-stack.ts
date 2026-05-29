@@ -53,5 +53,13 @@ export class SchemaConverterStack extends Stack {
         proxy: true,
       })
     );
+
+    const lintResource = api.root.addResource("lint");
+    lintResource.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(converterFunction, {
+        proxy: true,
+      })
+    );
   }
 }
