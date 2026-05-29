@@ -9,6 +9,7 @@ export function normalizeOracle(sql, changes) {
     result = removeSlashTerminators(result);
     result = convertOracleTypes(result, changes);
     result = convertOracleSequences(result, changes);
+    result = convertNextval(result, changes);
     result = removeSynonyms(result, changes);
     result = removePlsqlBlocks(result, changes);
     result = removeStorageClauses(result, changes);
@@ -83,6 +84,24 @@ function convertOracleSequences(sql, changes) {
     if (replacements.length > 0) {
         changes.push({ type: 'modified', message: 'Cleaned Oracle-specific sequence options (NOCACHE, NOCYCLE, ORDER)' });
         replacements.forEach(r => { sql = sql.replace(r.old, r.new); });
+    }
+
+    return sql;
+}
+
+function convertNextval(sql, changes) {
+    const nextvalRegex = /\b([\w."]+)\.NEXTVAL\b/gi;
+    const matches = sql.match(nextvalRegex);
+    if (matches) {
+        changes.push({ type: 'modified', message: 'Converted sequence_name.NEXTVAL to nextval(\'sequence_name\')' });
+        sql = sql.replace(nextvalRegex, (match, seqName) => `nextval('${seqName.replace(/"/g, '')}')`);
+    }
+
+    const currvalRegex = /\b([\w."]+)\.CURRVAL\b/gi;
+    const currmatches = sql.match(currvalRegex);
+    if (currmatches) {
+        changes.push({ type: 'modified', message: 'Converted sequence_name.CURRVAL to currval(\'sequence_name\')' });
+        sql = sql.replace(currvalRegex, (match, seqName) => `currval('${seqName.replace(/"/g, '')}')`);
     }
 
     return sql;
