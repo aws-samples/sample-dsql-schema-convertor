@@ -24,6 +24,7 @@ export function normalizeSqlServer(sql, changes) {
     result = convertIsnull(result, changes);
     result = removeSchemaBinding(result, changes);
     result = removeNPrefix(result, changes);
+    result = convertBooleanDefaults(result, changes);
     result = addMissingSemicolons(result);
 
     return result;
@@ -253,6 +254,17 @@ function removeNPrefix(sql, changes) {
     if (sql.match(/\bN'/gi)) {
         changes.push({ type: 'modified', message: 'Removed N prefix from Unicode string literals' });
         sql = sql.replace(/\bN'/gi, "'");
+    }
+    return sql;
+}
+
+function convertBooleanDefaults(sql, changes) {
+    const regex = /\bBOOLEAN\s+DEFAULT\s+(\d+)/gi;
+    if (sql.match(regex)) {
+        changes.push({ type: 'modified', message: 'Converted numeric boolean defaults (0/1) to false/true' });
+        sql = sql.replace(regex, (match, val) => {
+            return `BOOLEAN DEFAULT ${val === '0' ? 'false' : 'true'}`;
+        });
     }
     return sql;
 }
