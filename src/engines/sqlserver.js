@@ -11,6 +11,7 @@ export function normalizeSqlServer(sql, changes) {
     result = removeTsqlProcedures(result, changes);
     result = removeTsqlFunctions(result, changes);
     result = removeBracketQuotes(result, changes);
+    result = removeDboSchema(result, changes);
     result = convertIdentity(result, changes);
     result = convertSqlServerTypes(result, changes);
     result = removeComputedColumns(result, changes);
@@ -76,6 +77,14 @@ function removeBracketQuotes(sql, changes) {
     if (/\[/.test(sql)) {
         changes.push({ type: 'modified', message: 'Converted bracket-quoted identifiers [name] to double-quoted "name"' });
         sql = sql.replace(/\[([^\]]+)\]/g, '"$1"');
+    }
+    return sql;
+}
+
+function removeDboSchema(sql, changes) {
+    if (sql.match(/"dbo"\s*\.\s*"/gi)) {
+        changes.push({ type: 'removed', message: 'Removed "dbo" schema prefix — DSQL uses public schema by default' });
+        sql = sql.replace(/"dbo"\s*\.\s*"/gi, '"');
     }
     return sql;
 }
