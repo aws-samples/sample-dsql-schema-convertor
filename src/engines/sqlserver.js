@@ -24,6 +24,7 @@ export function normalizeSqlServer(sql, changes) {
     result = convertIsnull(result, changes);
     result = removeSchemaBinding(result, changes);
     result = removeNPrefix(result, changes);
+    result = addMissingSemicolons(result);
 
     return result;
 }
@@ -253,5 +254,19 @@ function removeNPrefix(sql, changes) {
         changes.push({ type: 'modified', message: 'Removed N prefix from Unicode string literals' });
         sql = sql.replace(/\bN'/gi, "'");
     }
+    return sql;
+}
+
+function addMissingSemicolons(sql) {
+    sql = sql.replace(/\)(\s*\n\s*\n\s*CREATE\b)/gi, ');\n$1');
+    sql = sql.replace(/\)(\s*\n\s*CREATE\b)/gi, ');\n$1');
+    sql = sql.replace(/(\)\s*)$/gm, (match, group, offset) => {
+        const rest = sql.slice(offset + match.length).trim();
+        if (rest === '' || rest.startsWith('CREATE') || rest.startsWith('--')) {
+            return group.endsWith(';') ? group : group.trimEnd() + ';';
+        }
+        return match;
+    });
+    sql = sql.replace(/^(CREATE\s+(?:UNIQUE\s+)?INDEX\s+ASYNC\b[^;]*[^;\s])(\s*$)/gim, '$1;$2');
     return sql;
 }
