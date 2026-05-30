@@ -15,7 +15,10 @@ export class SchemaConverterStack extends Stack {
       {
         functionName: "dsql-schema-converter",
         code: lambda.DockerImageCode.fromImageAsset(
-          path.join(__dirname, "../../")
+          path.join(__dirname, "../../"),
+          {
+            exclude: ["cdk", "cdk.out"],
+          }
         ),
         timeout: Duration.seconds(60),
         memorySize: 512,

@@ -33,13 +33,38 @@ function App() {
     const [lintLoading, setLintLoading] = useState(false);
     const [lintError, setLintError] = useState(null);
 
-    const handleConvert = useCallback(() => {
+    const [converting, setConverting] = useState(false);
+
+    const handleConvert = useCallback(async () => {
         const input = inputSchema.trim();
         if (!input) return;
+        setConverting(true);
+        setHasOutput(false);
+
+        if (API_URL) {
+            try {
+                const response = await fetch(`${API_URL}/convert`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ schema: input }),
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                setOutputSchema(data.converted_schema || '');
+                setChanges(data.changes || []);
+                setHasOutput(true);
+                setConverting(false);
+                return;
+            } catch (err) {
+                // Fall back to local converter
+            }
+        }
+
         const result = convertSchema(input, selectedEngine.value);
         setOutputSchema(result.sql);
         setChanges(result.changes);
         setHasOutput(true);
+        setConverting(false);
     }, [inputSchema, selectedEngine]);
 
     const handleLoadSample = () => {
@@ -372,6 +397,7 @@ function App() {
                                     variant="primary"
                                     onClick={handleConvert}
                                     disabled={!inputSchema.trim()}
+                                    loading={converting}
                                 >
                                     Convert Schema
                                 </Button>
