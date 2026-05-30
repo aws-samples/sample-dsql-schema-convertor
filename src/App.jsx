@@ -140,54 +140,52 @@ function App() {
         const info = changes.filter(c => c.type !== 'removed' && c.type !== 'modified');
 
         const lines = [
-            '════════════════════════════════════════════════════════════════',
-            '          AURORA DSQL SCHEMA CONVERSION REPORT',
-            '════════════════════════════════════════════════════════════════',
+            '# Aurora DSQL Schema Conversion',
             '',
-            `  Source Engine:      ${selectedEngine.label}`,
-            '  Target Engine:      Amazon Aurora DSQL',
-            `  Conversion Date:    ${new Date().toLocaleString()}`,
-            `  Total Changes:      ${changes.length}`,
+            '## Overview',
             '',
-            '────────────────────────────────────────────────────────────────',
-            '  SUMMARY',
-            '────────────────────────────────────────────────────────────────',
+            `| | |`,
+            `|---|---|`,
+            `| **Source Engine** | ${selectedEngine.label} |`,
+            `| **Target Engine** | Amazon Aurora DSQL |`,
+            `| **Conversion Date** | ${new Date().toISOString().split('T')[0]} |`,
+            `| **Total Changes** | ${changes.length} |`,
             '',
-            `  Removed:    ${removed.length} unsupported feature(s)`,
-            `  Modified:   ${modified.length} compatibility adjustment(s)`,
-            `  Info:       ${info.length} informational note(s)`,
+            '## Summary',
+            '',
+            `- **Removed:** ${removed.length} unsupported feature(s)`,
+            `- **Modified:** ${modified.length} compatibility adjustment(s)`,
+            `- **Info:** ${info.length} informational note(s)`,
             '',
         ];
 
         if (removed.length > 0) {
             lines.push(
-                '────────────────────────────────────────────────────────────────',
-                '  REMOVED — Unsupported Features',
-                '────────────────────────────────────────────────────────────────',
+                '## Removed Features',
                 '',
-                ...removed.map(c => `  • ${c.message}`),
+                'The following features are not supported in Aurora DSQL and were removed:',
+                '',
+                ...removed.map(c => `- ${c.message}`),
                 ''
             );
         }
 
         if (modified.length > 0) {
             lines.push(
-                '────────────────────────────────────────────────────────────────',
-                '  MODIFIED — Compatibility Adjustments',
-                '────────────────────────────────────────────────────────────────',
+                '## Modified for Compatibility',
                 '',
-                ...modified.map(c => `  • ${c.message}`),
+                'The following changes were made to ensure DSQL compatibility:',
+                '',
+                ...modified.map(c => `- ${c.message}`),
                 ''
             );
         }
 
         if (info.length > 0) {
             lines.push(
-                '────────────────────────────────────────────────────────────────',
-                '  INFO — Additional Notes',
-                '────────────────────────────────────────────────────────────────',
+                '## Additional Notes',
                 '',
-                ...info.map(c => `  • ${c.message}`),
+                ...info.map(c => `- ${c.message}`),
                 ''
             );
         }
@@ -195,43 +193,45 @@ function App() {
         const nextSteps = ['Review the converted schema for application-specific logic'];
         const allMessages = changes.map(c => c.message.toLowerCase()).join(' ');
         if (allMessages.includes('foreign key')) {
-            nextSteps.push('Implement removed foreign key constraints in your application layer');
+            nextSteps.push('Implement foreign key constraints at the application layer ([guide](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html#dsql-schema-design-patterns))');
         }
         if (allMessages.includes('trigger')) {
-            nextSteps.push('Replace removed triggers with application-level event handling');
+            nextSteps.push('Replace triggers with application-level event handling');
         }
         if (allMessages.includes('pl/pgsql') || allMessages.includes('function') || allMessages.includes('procedure')) {
-            nextSteps.push('Rewrite removed PL/pgSQL logic as application code or LANGUAGE SQL functions');
+            nextSteps.push('Rewrite PL/pgSQL logic as application code or `LANGUAGE SQL` functions');
         }
         if (allMessages.includes('extension')) {
             nextSteps.push('Find alternatives for removed PostgreSQL extensions');
         }
         if (allMessages.includes('sequence') || allMessages.includes('identity') || allMessages.includes('serial')) {
-            nextSteps.push('Verify identity column and sequence CACHE values meet your throughput needs');
+            nextSteps.push('Verify identity column and sequence `CACHE` values meet your throughput needs');
         }
         if (allMessages.includes('partition')) {
-            nextSteps.push('Note that DSQL handles data distribution automatically — no manual partitioning needed');
+            nextSteps.push('DSQL handles data distribution automatically — no manual partitioning needed');
         }
         nextSteps.push('Test the converted schema against an Aurora DSQL cluster');
 
         lines.push(
-            '────────────────────────────────────────────────────────────────',
-            '  NEXT STEPS',
-            '────────────────────────────────────────────────────────────────',
+            '## Next Steps',
             '',
-            ...nextSteps.map((s, i) => `  ${i + 1}. ${s}`),
+            ...nextSteps.map((s, i) => `${i + 1}. ${s}`),
             '',
-            '════════════════════════════════════════════════════════════════',
-            '  Generated by Aurora DSQL Schema Converter',
-            '  https://docs.aws.amazon.com/aurora-dsql/',
-            '════════════════════════════════════════════════════════════════',
+            '## Resources',
+            '',
+            '- [Aurora DSQL Documentation](https://docs.aws.amazon.com/aurora-dsql/)',
+            '- [Migration Guide](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-postgresql-compatibility-migration-guide.html)',
+            '- [Schema Converter Tool](https://aws-samples.github.io/sample-dsql-schema-convertor/)',
+            '',
+            '---',
+            '*Generated by [Aurora DSQL Schema Converter](https://aws-samples.github.io/sample-dsql-schema-convertor/)*',
         );
 
-        const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+        const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'dsql_conversion_report.txt';
+        a.download = 'DSQL_MIGRATION.md';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -459,7 +459,7 @@ function App() {
                                 variant="h2"
                                 actions={
                                     <Button onClick={handleDownloadSummary} iconName="download">
-                                        Download Summary
+                                        Download README
                                     </Button>
                                 }
                             >
