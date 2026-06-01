@@ -62,7 +62,7 @@ npm run dev
 
 ## Tech Stack
 
-- **Frontend:** React + [AWS Cloudscape Design System](https://cloudscape.design/)
+- **Frontend:** React
 - **Backend:** Python 3.12 Lambda (Docker) with [Strands Agents](https://github.com/strands-agents/strands-agents-python) + Amazon Bedrock
 - **Validation:** [dsql-lint](https://github.com/awslabs/dsql-lint)
 - **Infrastructure:** AWS CDK (API Gateway + Lambda)
