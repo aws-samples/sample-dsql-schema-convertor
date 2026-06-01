@@ -25,6 +25,8 @@ export class SchemaConverterStack extends Stack {
         architecture: lambda.Architecture.ARM_64,
         environment: {
           AWS_LWA_INVOKE_MODE: "RESPONSE_STREAM",
+          BEDROCK_MODEL_ID: "anthropic.claude-sonnet-4-20250514-v1:0",
+          BEDROCK_REGION: "us-west-2",
         },
       }
     );

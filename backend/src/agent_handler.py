@@ -49,9 +49,10 @@ Preserve formatting and comments from the original where they remain relevant.""
 
 
 def create_agent() -> Agent:
+    import os
     model = BedrockModel(
-        model_id="anthropic.claude-sonnet-4-20250514-v1:0",
-        region_name="us-west-2",
+        model_id=os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-sonnet-4-20250514-v1:0"),
+        region_name=os.environ.get("BEDROCK_REGION", "us-west-2"),
         temperature=0.1,
         max_tokens=8192,
     )
